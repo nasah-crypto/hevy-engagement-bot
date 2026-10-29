@@ -99,7 +99,16 @@ class Hevy:
                 except ValueError:
                     return response.status, None
         except HTTPError as error:
-            return error.code, None
+            # Only known error codes can appear in logs; never response bodies.
+            known = {"InvalidApiKey", "InvalidAuthToken", "MissingAuthToken",
+                     "AccessTokenExpired", "AccessTokenInvalid", "MissingClientTime",
+                     "InvalidClientTime", "InvalidRequest"}
+            try:
+                body = json.loads(error.read())
+                code = body.get("error") if isinstance(body, dict) else None
+                return error.code, {"error": code if isinstance(code, str) and code in known else None}
+            except (ValueError, OSError):
+                return error.code, None
         except (URLError, TimeoutError, OSError):
             raise BotError("Hevy injoignable. Reessayer plus tard.") from None
 
@@ -120,7 +129,12 @@ class Hevy:
         if status in (401, 403):
             raise BotError("Connexion refusee par Hevy. Refaire la liaison depuis Safari.")
         if not 200 <= status < 300:
-            raise BotError(f"Hevy a renvoye HTTP {status}. Aucune poursuite du traitement.")
+            route = path.split("?")[0]
+            if route not in ("/user/account", "/auth/refresh_token"):
+                route = "/" + route.strip("/").split("/")[0]
+            code = data.get("error") if isinstance(data, dict) else None
+            detail = f" ({code})" if code else ""
+            raise BotError(f"Hevy a renvoye HTTP {status} pour {method} {route}{detail}. Traitement arrete.")
         return data
 
 
