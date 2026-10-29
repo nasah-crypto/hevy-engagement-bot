@@ -30,6 +30,15 @@ si ces informations sont disponibles. Aucun nom de demandeur n'est journalise.
 Une API privee peut changer ou refuser une requete ; zero erreur et une
 croissance constante des abonnes ne peuvent pas etre garantis.
 
+## Validation du 29 octobre 2026
+
+23 tests automatises passes. Controle sur Hevy : 50 likes historiques confirmes
+sur 50, puis 2 nouveaux abonnements confirmes par relecture du statut serveur.
+Le workflow est actif ; la programmation horaire est configuree. Aucun passage
+horaire n'avait encore ete observe au moment de cette validation.
+Le profil est prive et 24 demandes recues restent en attente : elles n'ont pas
+ete acceptees par le programme.
+
 ## Etat actuel
 
 Le workflow programme un passage de likes chaque heure lorsque le secret
