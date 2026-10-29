@@ -1,4 +1,4 @@
-"""Follow back first, then discover; remove only observed lost followers."""
+"""Follow back first; clean an explicit historical backlog and confirmed losses."""
 import argparse
 import os
 import re

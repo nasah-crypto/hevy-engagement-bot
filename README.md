@@ -34,6 +34,10 @@ elle est conservee et quitte la liste. Le plafond commun a tous les retraits
 reste de 2 par passage et 10 tentatives sur 24 heures. Variable
 `HEVY_CLEANUP_EXISTING=false` : suspend uniquement ce nettoyage.
 
+Le premier essai sur le compte a confirme 2 retraits d'anciens abonnements non
+reciproques, avec 35 comptes restants a recontroler. Les nouveaux abonnements du
+bot ont ete exclus et les demandes recues n'ont pas ete acceptees.
+
 ## Departs constates depuis l'activation
 
 Pour cette regle, le premier releve complet sert de reference. Ensuite,
@@ -69,7 +73,7 @@ croissance constante des abonnes ne peuvent pas etre garantis.
 
 ## Validation du 29 octobre 2026
 
-49 tests automatises passes localement. Le premier passage
+49 tests automatises passes localement et sur GitHub. Le premier passage
 horaire a confirme 100 nouveaux likes et 2 nouveaux abonnements.
 Le controle de la gestion sociale a releve les 168 abonnes de facon complete,
 puis confirme 2 suivis en retour prioritaires. Quatre retours restaient a
