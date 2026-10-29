@@ -7,6 +7,7 @@ on:
       - .github/workflows/amis-hevy.yml
       - friends_bot.py
       - social_bot.py
+      - tests/**
   workflow_dispatch:
     inputs:
       mode:
@@ -43,6 +44,8 @@ jobs:
           python-version: '3.12'
       - name: Installer le composant de chiffrement
         run: python -m pip install 'cryptography==50.0.2'
+      - name: Verifier les protections du bot
+        run: python -m unittest discover -s tests -p 'test_*.py' -q
       - name: Identifier la connexion
         id: session
         env:
@@ -67,15 +70,24 @@ jobs:
             controler) python friends_bot.py --audit ;;
             *) python friends_bot.py ;;
           esac
-      - name: Gerer les nouveaux abonnements
+      - name: Gerer les abonnements et les retours
         if: ${{ !cancelled() && steps.session.outputs.id != '' }}
         env:
           HEVY_AUTH_JSON: ${{ secrets.HEVY_AUTH_JSON }}
           HEVY_EXPECTED_USERNAME: abakayhasan
-          APPLY_FOLLOWS: ${{ (github.event_name == 'schedule' || inputs.mode == 'automatique') && vars.HEVY_FOLLOW_ENABLED != 'false' }}
+          APPLY_SOCIAL: ${{ github.event_name == 'schedule' || inputs.mode == 'automatique' }}
+          FOLLOW_ENABLED: ${{ vars.HEVY_FOLLOW_ENABLED != 'false' }}
+          UNFOLLOW_ENABLED: ${{ vars.HEVY_UNFOLLOW_ENABLED != 'false' }}
         run: |
-          if [ "$APPLY_FOLLOWS" = "true" ]; then
-            python social_bot.py --apply
+          extra_args=()
+          if [ "$FOLLOW_ENABLED" != "true" ]; then
+            extra_args+=(--no-follow)
+          fi
+          if [ "$UNFOLLOW_ENABLED" != "true" ]; then
+            extra_args+=(--no-unfollow)
+          fi
+          if [ "$APPLY_SOCIAL" = "true" ]; then
+            python social_bot.py --apply "${extra_args[@]}"
           else
             python social_bot.py
           fi

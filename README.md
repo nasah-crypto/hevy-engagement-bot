@@ -2,25 +2,45 @@
 
 Version personnelle basee sur le depot MIT de dizzyfrogs. Le nouveau programme
 `friends_bot.py` utilise les seances des personnes deja suivies. `social_bot.py`
-ajoute les abonnements limites depuis les recommandations de Hevy. Aucun des
+priorise les suivis en retour, puis les recommandations de Hevy. Il gere aussi
+la perte d'abonnes constatee depuis son activation. Aucun des
 deux n'utilise les anciens modules follow/unfollow du programme d'origine.
 
 ## Abonnements automatiques
 
 Le passage horaire lance aussi les nouveaux abonnements : maximum 2 par passage
-et 20 tentatives sur 24 heures glissantes, parmi les utilisateurs recommandes
-par Hevy. Ces plafonds sont choisis pour ce bot et ne representent pas une
+et 20 tentatives sur 24 heures glissantes. Les personnes qui nous suivent deja
+passent AVANT les recommandations de Hevy. Le plafond est commun aux deux.
+Ces plafonds sont choisis pour ce bot et ne representent pas une
 autorisation ou une limite officielle de Hevy. Les comptes deja suivis, les
 demandes en attente et les personnes deja tentees par le bot sont exclus.
 Chaque tentative est chiffree et enregistree AVANT l'envoi pour eviter de
 recommencer apres une coupure. Le statut following/requested est relu sur Hevy.
-Le bot ne se desabonne de personne, ne publie pas de commentaires et ne change
-pas la confidentialite du compte. Les abonnements recus ne sont pas garantis.
+Le bot ne publie pas de commentaires et ne change pas la confidentialite du
+compte. Les abonnements recus ne sont pas garantis.
 
-Mode manuel `automatique` : likes et nouveaux abonnements.
+## Desabonnement des anciens abonnes
+
+Le premier releve complet sert de reference et ne supprime personne. Ensuite,
+une personne suivie qui etait abonnee et disparait reste en attente au moins
+24 heures. Avant chaque desabonnement, la liste COMPLETE des abonnes est relue
+et le statut following est recontrole. Une personne revenue entre-temps est
+conservee. Les contacts deja non reciproques lors du premier releve, ainsi que
+les nouvelles demandes sortantes, ne sont pas supprimes par cette regle.
+
+Maximum : 2 desabonnements par passage et 10 tentatives sur 24 heures. Aucun
+desabonnement n'est compte sans relecture du statut. Une tentative incertaine
+n'est pas repetee. Les comptes retires ne sont pas reabonnes automatiquement.
+Une liste incomplete, des pages dupliquees, un nombre d'abonnes qui ne
+correspond pas au profil ou une baisse inhabituellement forte bloquent la
+gestion sociale. Les releves et historiques restent dans le cache chiffre.
+
+Mode manuel `automatique` : likes, suivis en retour, nouveaux abonnements et
+desabonnements confirmes selon la regle ci-dessus.
 Mode `liker` : likes uniquement ; `verifier` et `controler` ne creent pas
 d'abonnements. Les modifications du code ne font que des controles en lecture.
 Variable `HEVY_FOLLOW_ENABLED=false` : suspend uniquement les nouveaux abonnements.
+Variable `HEVY_UNFOLLOW_ENABLED=false` : suspend uniquement les desabonnements.
 Variable `HEVY_ENABLED=false` : suspend tous les passages horaires.
 
 L'acceptation automatique des demandes RECUES n'est pas activee : la route de
@@ -32,10 +52,11 @@ croissance constante des abonnes ne peuvent pas etre garantis.
 
 ## Validation du 29 octobre 2026
 
-23 tests automatises passes. Controle sur Hevy : 50 likes historiques confirmes
+39 tests automatises passes. Controle sur Hevy : 50 likes historiques confirmes
 sur 50, puis 2 nouveaux abonnements confirmes par relecture du statut serveur.
-Le workflow est actif ; la programmation horaire est configuree. Aucun passage
-horaire n'avait encore ete observe au moment de cette validation.
+Le workflow est actif et un premier passage horaire a ete observe. Le controle
+des nouvelles fonctions lit la liste complete des abonnes sans envoyer de
+suivis en retour ni de desabonnements lors du deploiement.
 Le profil est prive et 24 demandes recues restent en attente : elles n'ont pas
 ete acceptees par le programme.
 
@@ -105,7 +126,8 @@ pendant cette pause.
 - Chaque nouveau like est relu sur Hevy avant d'etre compte et enregistre.
 - Maximum de 100 likes par passage, 40 pages de 5 seances par ami.
 - Arret en cas de limite API, connexion refusee ou reponse non reconnue.
-- Aucun abonnement, desabonnement, commentaire ni message automatique.
+- Les limites et protections sociales sont decrites ci-dessus.
+- Aucun commentaire ni message automatique.
 
 Le jeton initial reste dans un secret GitHub. Les jetons renouveles sont
 conserves dans un cache chiffre avec Fernet ; la cle est derivee du secret
