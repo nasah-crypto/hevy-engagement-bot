@@ -19,9 +19,24 @@ recommencer apres une coupure. Le statut following/requested est relu sur Hevy.
 Le bot ne publie pas de commentaires et ne change pas la confidentialite du
 compte. Les abonnements recus ne sont pas garantis.
 
-## Desabonnement des anciens abonnes
+## Nettoyage des abonnements deja non reciproques
 
-Le premier releve complet sert de reference et ne supprime personne. Ensuite,
+Le nettoyage demande concerne aussi les comptes deja suivis avant la mise en
+place du bot, qui ne nous suivent pas. A son premier passage avec l'option
+`--cleanup-existing`, il enregistre une liste figee apres lecture complete des
+abonnements et des abonnes, comparee aux compteurs Hevy. Les comptes suivis par
+le bot et les demandes sortantes en attente sont exclus. Aucun nouveau compte
+n'est ajoute automatiquement a cette liste apres sa creation.
+
+Cette liste peut etre traitee des maintenant, sans attendre 24 heures. Chaque
+personne est recontrolee juste avant son retrait : si elle nous suit desormais,
+elle est conservee et quitte la liste. Le plafond commun a tous les retraits
+reste de 2 par passage et 10 tentatives sur 24 heures. Variable
+`HEVY_CLEANUP_EXISTING=false` : suspend uniquement ce nettoyage.
+
+## Departs constates depuis l'activation
+
+Pour cette regle, le premier releve complet sert de reference. Ensuite,
 une personne suivie qui etait abonnee et disparait reste en attente au moins
 24 heures. Avant chaque desabonnement, la liste COMPLETE des abonnes est relue
 et le statut following est recontrole. Une personne revenue entre-temps est
@@ -38,7 +53,7 @@ Chaque programme a un delai maximal avec interruption afin de laisser le temps
 de sauvegarder l'etat chiffre avant la limite globale du job GitHub.
 
 Mode manuel `automatique` : likes, suivis en retour, nouveaux abonnements et
-desabonnements confirmes selon la regle ci-dessus.
+nettoyage des anciens non reciproques et desabonnements selon les regles ci-dessus.
 Mode `liker` : likes uniquement ; `verifier` et `controler` ne creent pas
 d'abonnements. Les modifications du code ne font que des controles en lecture.
 Variable `HEVY_FOLLOW_ENABLED=false` : suspend les nouveaux abonnements, y compris les suivis en retour.
@@ -54,7 +69,7 @@ croissance constante des abonnes ne peuvent pas etre garantis.
 
 ## Validation du 29 octobre 2026
 
-40 tests automatises passes localement et sur GitHub. Le premier passage
+49 tests automatises passes localement. Le premier passage
 horaire a confirme 100 nouveaux likes et 2 nouveaux abonnements.
 Le controle de la gestion sociale a releve les 168 abonnes de facon complete,
 puis confirme 2 suivis en retour prioritaires. Quatre retours restaient a

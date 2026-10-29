@@ -22,7 +22,10 @@ class BalanceAPI(SocialAPI):
         if path == "/user/account":
             return {"username": "me"}
         if path == "/follow_counts":
-            return {"follower_count": len(self.fans) if self.count is None else self.count}
+            return {"follower_count": len(self.fans) if self.count is None else self.count,
+                    "following_count": sum(v == "following" for v in self.state.values())}
+        if path == "/following/me":
+            return [{"username": n} for n, status in self.state.items() if status == "following"]
         if path.startswith("/followers_paged/me/"):
             offset = int(path.rsplit("/", 1)[1])
             offset = 0 if self.duplicate else offset

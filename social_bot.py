@@ -89,23 +89,58 @@ def observe_followers(store, current, current_statuses, clock=time.time):
     return first
 
 
-def unfollow_lost(api, store, own, apply=False, clock=time.time):
+def prepare_existing_cleanup(api, store, own, current_followers, current_statuses):
+    """Freeze the explicitly requested backlog once; never enroll new follows."""
+    if "existing_nonmutual_queue" not in store.data:
+        before = api.request("GET", "/follow_counts")
+        followed = valid_names(usernames(api.request("GET", "/following/" + quote(own, safe=""))))
+        after = api.request("GET", "/follow_counts")
+        if (not isinstance(before, dict) or not isinstance(after, dict)
+                or type(before.get("following_count")) is not int
+                or before["following_count"] != after.get("following_count")
+                or len(followed) != before["following_count"]):
+            raise BotError("Liste des abonnements incomplete. Nettoyage des anciens suspendu.")
+        protected = set(attempts(store, "follow_attempts")) | set(attempts(store, "unfollow_attempts"))
+        store.data["existing_nonmutual_queue"] = sorted(
+            followed - current_followers - protected - {own})
+    queue = store.data["existing_nonmutual_queue"]
+    if not isinstance(queue, list):
+        raise BotError("Liste de nettoyage invalide. Aucun desabonnement envoye.")
+    queue = valid_names(queue)
+    # Someone who starts following us, or has already been removed manually,
+    # leaves this one-time backlog permanently.
+    queue = {name for name in queue if name not in current_followers
+             and current_statuses.get(name) == "following"}
+    store.data["existing_nonmutual_queue"] = sorted(queue)
+    store.save()
+    return queue
+
+
+def unfollow_lost(api, store, own, apply=False, clock=time.time, cleanup_existing=False):
     pending = attempts(store, "lost_followers_since")
     ledger = attempts(store, "unfollow_attempts")
     room = max(0, min(UNFOLLOW_PER_RUN, UNFOLLOW_PER_24_HOURS - sum(
         stamp >= clock() - 86400 for stamp in ledger.values())))
-    eligible = [name for name, stamp in sorted(pending.items(), key=lambda item: (item[1], item[0]))
+    legacy = valid_names(store.data.get("existing_nonmutual_queue", [])) if cleanup_existing else set()
+    old_lost = [name for name, stamp in sorted(pending.items(), key=lambda item: (item[1], item[0]))
                 if clock() - stamp >= ABSENCE_SECONDS and name not in ledger and name != own]
-    confirmed = 0
+    eligible = list(dict.fromkeys(sorted(name for name in legacy if name not in ledger and name != own) + old_lost))
+    confirmed = cleaned = 0
+
+    def remove_from_queue(name):
+        pending.pop(name, None)
+        if name in legacy:
+            legacy.remove(name)
+            store.data["existing_nonmutual_queue"] = sorted(legacy)
+        store.save()
+
     if apply:
         for name in eligible[:room]:
             if name in followers(api, own):
-                pending.pop(name, None)
-                store.save()
+                remove_from_queue(name)
                 continue
             if statuses(api).get(name) != "following":
-                pending.pop(name, None)
-                store.save()
+                remove_from_queue(name)
                 continue
             # Persist before the mutation: never repeat a possibly applied request.
             ledger[name] = clock()
@@ -117,10 +152,12 @@ def unfollow_lost(api, store, own, apply=False, clock=time.time):
                 status = statuses(api).get(name, "not-following")
             if status != "not-following":
                 raise BotError("Desabonnement non confirme. Traitement arrete sans nouvelle tentative.")
-            pending.pop(name, None)
-            store.save()
+            cleaned += name in legacy
+            remove_from_queue(name)
             confirmed += 1
-    return {"anciens_abonnes_absents_24h": len(eligible),
+    return {"anciens_abonnes_absents_24h": len(old_lost),
+            "anciens_non_reciproques_restants": len(legacy - set(ledger)),
+            "anciens_non_reciproques_retires": cleaned,
             "desabonnements_confirmes": confirmed}
 
 
@@ -180,12 +217,17 @@ def follow_recommendations(api, store, apply=False, cap=PER_RUN, clock=time.time
                 stamp >= clock() - 86400 for stamp in ledger.values())}
 
 
-def run_social(api, store, apply=False, unfollow=True, follow=True, clock=time.time):
+def run_social(api, store, apply=False, unfollow=True, follow=True, clock=time.time,
+               cleanup_existing=False):
     own = own_username(api)
     current = followers(api, own)
-    first = observe_followers(store, current, statuses(api), clock)
+    current_statuses = statuses(api)
+    first = observe_followers(store, current, current_statuses, clock)
+    if cleanup_existing:
+        prepare_existing_cleanup(api, store, own, current, current_statuses)
     result = follow_recommendations(api, store, apply=apply and follow, clock=clock, priority=current)
-    result.update(unfollow_lost(api, store, own, apply=apply and unfollow, clock=clock))
+    result.update(unfollow_lost(api, store, own, apply=apply and unfollow, clock=clock,
+                               cleanup_existing=cleanup_existing))
     result["abonnes_confirmes"] = len(current)
     result["premier_releve"] = first
     return result
@@ -218,20 +260,23 @@ def main():
     parser.add_argument("--inspect-requests", action="store_true")
     parser.add_argument("--no-unfollow", action="store_true")
     parser.add_argument("--no-follow", action="store_true")
+    parser.add_argument("--cleanup-existing", action="store_true")
     args = parser.parse_args()
     store = None
     try:
         store = StateStore(os.getenv("HEVY_AUTH_JSON", ""))
         api = Hevy(store)
+        if args.inspect_requests:
+            own_username(api)
+            print("Demandes recues (lecture seule) : " + str(inspect_requests(api)))
+            return 0
         result = run_social(api, store, apply=args.apply, unfollow=not args.no_unfollow,
-                            follow=not args.no_follow)
-        text = "Gestion sociale : " + str(result) + ". Abonnements : 2 par passage, 20 par 24 h ; desabonnements : 2 par passage, 10 par 24 h, apres 24 h d'absence confirmee."
+                            follow=not args.no_follow, cleanup_existing=args.cleanup_existing)
+        text = "Gestion sociale : " + str(result) + ". Abonnements : 2 par passage, 20 par 24 h ; desabonnements : 2 par passage, 10 par 24 h. Anciens non reciproques : nettoyage si active ; pertes futures : verification apres 24 h."
         print(text)
         if os.getenv("GITHUB_STEP_SUMMARY"):
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
                 summary.write(text + "\n")
-        if args.inspect_requests:
-            print("Demandes recues (lecture seule) : " + str(inspect_requests(api)))
         return 0
     except BotError as error:
         print(str(error), file=sys.stderr)

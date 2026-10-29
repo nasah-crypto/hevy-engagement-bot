@@ -75,11 +75,15 @@ jobs:
         env:
           HEVY_AUTH_JSON: ${{ secrets.HEVY_AUTH_JSON }}
           HEVY_EXPECTED_USERNAME: abakayhasan
-          APPLY_SOCIAL: ${{ github.event_name == 'schedule' || inputs.mode == 'automatique' }}
-          FOLLOW_ENABLED: ${{ vars.HEVY_FOLLOW_ENABLED != 'false' }}
+          APPLY_SOCIAL: ${{ github.event_name == 'schedule' || inputs.mode == 'automatique' || github.event.head_commit.message == 'Validate existing nonreciprocal cleanup on Hevy' }}
+          FOLLOW_ENABLED: ${{ vars.HEVY_FOLLOW_ENABLED != 'false' && github.event.head_commit.message != 'Validate existing nonreciprocal cleanup on Hevy' }}
           UNFOLLOW_ENABLED: ${{ vars.HEVY_UNFOLLOW_ENABLED != 'false' }}
+          CLEANUP_EXISTING: ${{ vars.HEVY_CLEANUP_EXISTING != 'false' }}
         run: |
           extra_args=()
+          if [ "$CLEANUP_EXISTING" = "true" ]; then
+            extra_args+=(--cleanup-existing)
+          fi
           if [ "$FOLLOW_ENABLED" != "true" ]; then
             extra_args+=(--no-follow)
           fi
@@ -89,7 +93,7 @@ jobs:
           if [ "$APPLY_SOCIAL" = "true" ]; then
             timeout --signal=INT --kill-after=15s 8m python social_bot.py --apply "${extra_args[@]}"
           else
-            timeout --signal=INT --kill-after=15s 8m python social_bot.py
+            timeout --signal=INT --kill-after=15s 8m python social_bot.py "${extra_args[@]}"
           fi
       - name: Verifier la disponibilite des demandes recues
         if: ${{ github.event_name == 'push' }}
