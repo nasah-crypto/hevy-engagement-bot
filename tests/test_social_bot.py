@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 
 import test_friends_bot as fixtures
-from friends_bot import BotError
+from friends_bot import BotError, Hevy
 from social_bot import follow_recommendations, inspect_requests
 
 
@@ -79,6 +79,19 @@ class SocialTests(unittest.TestCase):
         self.assertNotIn("private-person", str(result))
         self.assertEqual(api.posts, [])
         self.assertFalse(result["acceptation_automatique"])
+
+    def test_follow_payload_is_preserved_after_auth_refresh(self):
+        api = Hevy(self.store)
+        tokens = {"access_token": "rotated-test-access", "refresh_token": "rotated-test-refresh"}
+        with patch.object(api, "raw", side_effect=[(401, None), (200, tokens), (200, None)]) as raw:
+            api.request("POST", "/follow", {"username": "new1"})
+        self.assertEqual(raw.call_args_list[-1].args, ("POST", "/follow", {"username": "new1"}))
+
+    def test_daily_platform_limit_stops_without_retry_or_token_rotation(self):
+        with patch.object(Hevy, "raw", return_value=(403, {"error": "daily-limit-reached"})) as raw:
+            with self.assertRaisesRegex(BotError, "Limite quotidienne"):
+                Hevy(self.store).request("POST", "/follow", {"username": "new1"})
+        raw.assert_called_once()
 
 
 if __name__ == "__main__":

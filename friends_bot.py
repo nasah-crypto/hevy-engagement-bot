@@ -104,7 +104,7 @@ class Hevy:
             # Only known error codes can appear in logs; never response bodies.
             known = {"InvalidApiKey", "InvalidAuthToken", "MissingAuthToken",
                      "AccessTokenExpired", "AccessTokenInvalid", "MissingClientTime",
-                     "InvalidClientTime", "InvalidRequest"}
+                     "InvalidClientTime", "InvalidRequest", "daily-limit-reached"}
             try:
                 body = json.loads(error.read())
                 code = body.get("error") if isinstance(body, dict) else None
@@ -128,6 +128,8 @@ class Hevy:
             status, data = self.raw(method, path, payload)
         if status == 429:
             raise BotError("Limite Hevy atteinte. Arret, sans nouvelles tentatives.")
+        if status == 403 and isinstance(data, dict) and data.get("error") == "daily-limit-reached":
+            raise BotError("Limite quotidienne Hevy atteinte. Arret des abonnements, sans nouvelle tentative.")
         if status in (401, 403):
             raise BotError("Connexion refusee par Hevy. Refaire la liaison depuis Safari.")
         if not 200 <= status < 300:

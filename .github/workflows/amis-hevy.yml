@@ -72,7 +72,7 @@ jobs:
         env:
           HEVY_AUTH_JSON: ${{ secrets.HEVY_AUTH_JSON }}
           HEVY_EXPECTED_USERNAME: abakayhasan
-          APPLY_FOLLOWS: ${{ (github.event_name == 'schedule' || inputs.mode == 'automatique') && vars.HEVY_FOLLOW_ENABLED != 'false' }}
+          APPLY_FOLLOWS: ${{ (github.event_name == 'schedule' || inputs.mode == 'automatique' || github.event.head_commit.message == 'Verify initial automatic follows on Hevy') && vars.HEVY_FOLLOW_ENABLED != 'false' }}
         run: |
           if [ "$APPLY_FOLLOWS" = "true" ]; then
             python social_bot.py --apply
