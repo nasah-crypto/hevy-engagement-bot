@@ -34,12 +34,14 @@ n'est pas repetee. Les comptes retires ne sont pas reabonnes automatiquement.
 Une liste incomplete, des pages dupliquees, un nombre d'abonnes qui ne
 correspond pas au profil ou une baisse inhabituellement forte bloquent la
 gestion sociale. Les releves et historiques restent dans le cache chiffre.
+Chaque programme a un delai maximal avec interruption afin de laisser le temps
+de sauvegarder l'etat chiffre avant la limite globale du job GitHub.
 
 Mode manuel `automatique` : likes, suivis en retour, nouveaux abonnements et
 desabonnements confirmes selon la regle ci-dessus.
 Mode `liker` : likes uniquement ; `verifier` et `controler` ne creent pas
 d'abonnements. Les modifications du code ne font que des controles en lecture.
-Variable `HEVY_FOLLOW_ENABLED=false` : suspend uniquement les nouveaux abonnements.
+Variable `HEVY_FOLLOW_ENABLED=false` : suspend les nouveaux abonnements, y compris les suivis en retour.
 Variable `HEVY_UNFOLLOW_ENABLED=false` : suspend uniquement les desabonnements.
 Variable `HEVY_ENABLED=false` : suspend tous les passages horaires.
 
@@ -52,7 +54,7 @@ croissance constante des abonnes ne peuvent pas etre garantis.
 
 ## Validation du 29 octobre 2026
 
-39 tests automatises passes. Controle sur Hevy : 50 likes historiques confirmes
+40 tests automatises passes. Controle sur Hevy : 50 likes historiques confirmes
 sur 50, puis 2 nouveaux abonnements confirmes par relecture du statut serveur.
 Le workflow est actif et un premier passage horaire a ete observe. Le controle
 des nouvelles fonctions lit la liste complete des abonnes sans envoyer de

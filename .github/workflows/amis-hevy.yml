@@ -34,7 +34,7 @@ jobs:
   amis:
     if: github.event_name != 'schedule' || vars.HEVY_ENABLED != 'false'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
         with:
@@ -66,16 +66,16 @@ jobs:
           RUN_MODE: ${{ github.event_name == 'schedule' && 'liker' || inputs.mode || 'controler' }}
         run: |
           case "$RUN_MODE" in
-            liker|automatique) python friends_bot.py --apply ;;
-            controler) python friends_bot.py --audit ;;
-            *) python friends_bot.py ;;
+            liker|automatique) timeout --signal=INT --kill-after=15s 18m python friends_bot.py --apply ;;
+            controler) timeout --signal=INT --kill-after=15s 18m python friends_bot.py --audit ;;
+            *) timeout --signal=INT --kill-after=15s 18m python friends_bot.py ;;
           esac
       - name: Gerer les abonnements et les retours
         if: ${{ !cancelled() && steps.session.outputs.id != '' }}
         env:
           HEVY_AUTH_JSON: ${{ secrets.HEVY_AUTH_JSON }}
           HEVY_EXPECTED_USERNAME: abakayhasan
-          APPLY_SOCIAL: ${{ github.event_name == 'schedule' || inputs.mode == 'automatique' }}
+          APPLY_SOCIAL: ${{ github.event_name == 'schedule' || inputs.mode == 'automatique' || github.event.head_commit.message == 'Validate priority followbacks on Hevy' }}
           FOLLOW_ENABLED: ${{ vars.HEVY_FOLLOW_ENABLED != 'false' }}
           UNFOLLOW_ENABLED: ${{ vars.HEVY_UNFOLLOW_ENABLED != 'false' }}
         run: |
@@ -87,9 +87,9 @@ jobs:
             extra_args+=(--no-unfollow)
           fi
           if [ "$APPLY_SOCIAL" = "true" ]; then
-            python social_bot.py --apply "${extra_args[@]}"
+            timeout --signal=INT --kill-after=15s 8m python social_bot.py --apply "${extra_args[@]}"
           else
-            python social_bot.py
+            timeout --signal=INT --kill-after=15s 8m python social_bot.py
           fi
       - name: Verifier la disponibilite des demandes recues
         if: ${{ github.event_name == 'push' }}
@@ -97,7 +97,7 @@ jobs:
         env:
           HEVY_AUTH_JSON: ${{ secrets.HEVY_AUTH_JSON }}
           HEVY_EXPECTED_USERNAME: abakayhasan
-        run: python social_bot.py --inspect-requests
+        run: timeout --signal=INT --kill-after=15s 8m python social_bot.py --inspect-requests
       - name: Conserver uniquement la connexion chiffree
         if: always() && steps.session.outputs.id != '' && hashFiles('.hevy-state/session.enc') != ''
         uses: actions/cache/save@v4

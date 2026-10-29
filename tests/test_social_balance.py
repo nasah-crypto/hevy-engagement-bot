@@ -20,7 +20,9 @@ class BalanceAPI(SocialAPI):
 
     def request(self, method, path, payload=None):
         if path == "/user/account":
-            return {"username": "me", "follower_count": len(self.fans) if self.count is None else self.count}
+            return {"username": "me"}
+        if path == "/follow_counts":
+            return {"follower_count": len(self.fans) if self.count is None else self.count}
         if path.startswith("/followers_paged/me/"):
             offset = int(path.rsplit("/", 1)[1])
             offset = 0 if self.duplicate else offset
@@ -96,6 +98,12 @@ class BalanceTests(unittest.TestCase):
 
     def test_incomplete_follower_list_stops_before_all_writes(self):
         api = BalanceAPI(fans={"fan"}, count=100)
+        with self.assertRaises(BotError):
+            run_social(api, self.store, apply=True, clock=lambda: NOW)
+        self.assertEqual(api.posts + api.unfollows, [])
+
+    def test_unrecognized_count_contract_blocks_all_writes(self):
+        api = BalanceAPI(fans={"fan"}, count="1")
         with self.assertRaises(BotError):
             run_social(api, self.store, apply=True, clock=lambda: NOW)
         self.assertEqual(api.posts + api.unfollows, [])

@@ -34,14 +34,13 @@ def attempts(store, key):
 
 
 def followers(api, own):
-    """Read every offset page and check its size against two account counts."""
+    """Read every offset page and check its size against Hevy's two counts."""
     def count():
-        account = api.request("GET", "/user/account")
-        if (not isinstance(account, dict) or account.get("username", "").casefold() != own
-                or type(account.get("follower_count")) is not int
-                or not 0 <= account["follower_count"] <= 10000):
+        counts = api.request("GET", "/follow_counts")
+        if (not isinstance(counts, dict) or type(counts.get("follower_count")) is not int
+                or not 0 <= counts["follower_count"] <= 10000):
             raise BotError("Nombre d'abonnes non reconnu. Aucun desabonnement envoye.")
-        return account["follower_count"]
+        return counts["follower_count"]
 
     before = count()
     found = set()
