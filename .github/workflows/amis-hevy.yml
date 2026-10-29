@@ -16,6 +16,7 @@ on:
         options:
           - verifier
           - liker
+          - controler
   schedule:
     - cron: '23 * * * *'
 
@@ -57,13 +58,13 @@ jobs:
         env:
           HEVY_AUTH_JSON: ${{ secrets.HEVY_AUTH_JSON }}
           HEVY_EXPECTED_USERNAME: abakayhasan
-          APPLY_LIKES: ${{ github.event_name == 'schedule' || inputs.mode == 'liker' }}
+          RUN_MODE: ${{ github.event_name == 'schedule' && 'liker' || inputs.mode || 'controler' }}
         run: |
-          if [ "$APPLY_LIKES" = "true" ]; then
-            python friends_bot.py --apply
-          else
-            python friends_bot.py
-          fi
+          case "$RUN_MODE" in
+            liker) python friends_bot.py --apply ;;
+            controler) python friends_bot.py --audit ;;
+            *) python friends_bot.py ;;
+          esac
       - name: Conserver uniquement la connexion chiffree
         if: always() && steps.session.outputs.id != '' && hashFiles('.hevy-state/session.enc') != ''
         uses: actions/cache/save@v4

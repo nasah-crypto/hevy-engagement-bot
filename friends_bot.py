@@ -169,7 +169,7 @@ def workout_date(workout):
     raise BotError("Date de seance inconnue. Arret avant de liker cette seance.")
 
 
-def run(api, store, apply=False, cap=MAX_LIKES, days=7, clock=time.time):
+def own_username(api):
     account = api.request("GET", "/user/account")
     if not isinstance(account, dict) or not isinstance(account.get("username"), str):
         raise BotError("Profil Hevy non reconnu. Aucun like envoye.")
@@ -177,10 +177,29 @@ def run(api, store, apply=False, cap=MAX_LIKES, days=7, clock=time.time):
     expected = os.getenv("HEVY_EXPECTED_USERNAME", "").casefold()
     if expected and own != expected:
         raise BotError("Ce n'est pas le profil Hevy attendu. Aucun like envoye.")
+    return own
+
+
+def audit_likes(api, store, limit=50):
+    own = own_username(api)
+    ids = list(dict.fromkeys(store.data.get("liked", [])))[-limit:]
+    confirmed = 0
+    for wid in ids:
+        if not isinstance(wid, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", wid):
+            raise BotError("Identifiant enregistre non reconnu. Controle arrete.")
+        if own in usernames(api.request("GET", "/workout_likes/" + wid)):
+            confirmed += 1
+    return len(ids), confirmed
+
+
+def run(api, store, apply=False, cap=MAX_LIKES, days=7, clock=time.time):
+    own = own_username(api)
     friends = usernames(api.request("GET", "/following/" + quote(own, safe=""))) - {own}
     remembered = set(store.data.get("liked", []))
     cutoff = clock() - days * 86400
-    candidates = sent = 0
+    # Collect across all followed accounts before selecting the newest posts.
+    # Alphabetical traversal must not decide which friends receive the first likes.
+    collected = {}
     for friend in sorted(friends):
         for page in range(40):
             params = urlencode({"username": friend, "limit": PAGE_SIZE, "offset": page * PAGE_SIZE})
@@ -192,7 +211,8 @@ def run(api, store, apply=False, cap=MAX_LIKES, days=7, clock=time.time):
             for workout in workouts:
                 if not isinstance(workout, dict):
                     raise BotError("Format de seance inconnu.")
-                if workout_date(workout) < cutoff:
+                created = workout_date(workout)
+                if created < cutoff:
                     old += 1
                     continue
                 wid = str(workout.get("id", ""))
@@ -200,30 +220,41 @@ def run(api, store, apply=False, cap=MAX_LIKES, days=7, clock=time.time):
                     raise BotError("Identifiant de seance inconnu.")
                 if wid in remembered:
                     continue
-                likers = usernames(api.request("GET", "/workout_likes/" + wid))
-                if own in likers:
-                    continue
-                candidates += 1
-                if apply:
-                    # Confirm this is still a followed user just before each write.
-                    current = usernames(api.request("GET", "/following/" + quote(own, safe="")))
-                    if friend not in current or friend == own:
-                        continue
-                    api.request("POST", "/workout/like/" + wid)
-                    remembered.add(wid)
-                    store.data["liked"] = sorted(remembered)[-10000:]
-                    store.save()
-                    sent += 1
-                if (sent if apply else candidates) >= cap:
-                    return len(friends), candidates, sent, True
+                collected.setdefault(wid, (created, friend))
             if len(workouts) < PAGE_SIZE or (workouts and old == len(workouts)):
                 break
+    candidates = sent = 0
+    ordered = sorted(collected.items(), key=lambda item: (-item[1][0], item[0]))
+    for wid, (_, friend) in ordered:
+        likers = usernames(api.request("GET", "/workout_likes/" + wid))
+        if own in likers:
+            continue
+        candidates += 1
+        if apply:
+            current = usernames(api.request("GET", "/following/" + quote(own, safe="")))
+            if friend not in current or friend == own:
+                continue
+            api.request("POST", "/workout/like/" + wid)
+            verified = usernames(api.request("GET", "/workout_likes/" + wid))
+            if own not in verified:
+                # Give the server one short opportunity to make the update visible.
+                time.sleep(2)
+                verified = usernames(api.request("GET", "/workout_likes/" + wid))
+            if own not in verified:
+                raise BotError("Hevy n'a pas confirme le like apres envoi. Traitement arrete.")
+            remembered.add(wid)
+            store.data["liked"] = sorted(remembered)[-10000:]
+            store.save()
+            sent += 1
+        if (sent if apply else candidates) >= cap:
+            return len(friends), candidates, sent, True
     return len(friends), candidates, sent, False
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--audit", action="store_true")
     parser.add_argument("--cache-id", action="store_true")
     args = parser.parse_args()
     store = None
@@ -231,6 +262,12 @@ def main():
         store = StateStore(os.getenv("HEVY_AUTH_JSON", ""))
         if args.cache_id:
             print(store.cache_id)
+            return 0
+        if args.audit:
+            checked, confirmed = audit_likes(Hevy(store), store)
+            print(f"Controle sur Hevy : {confirmed} likes confirmes sur {checked} likes enregistres. Aucun nouveau like envoye.")
+            if confirmed != checked:
+                raise BotError("Certains likes enregistres ne sont pas presents sur Hevy.")
             return 0
         friends, found, sent, capped = run(Hevy(store), store, apply=args.apply)
         text = (f"Amis suivis : {friends}. Seances a liker : {found}. "

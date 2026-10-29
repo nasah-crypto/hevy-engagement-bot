@@ -4,7 +4,8 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
-from friends_bot import BotError, Hevy, StateStore, run, workout_date
+from friends_bot import BotError, Hevy, StateStore, audit_likes, run, workout_date
+from urllib.parse import parse_qs, urlsplit
 
 
 SEED = json.dumps({"access_token": "fake-access-token-1234", "refresh_token": "fake-refresh-token-5678"})
@@ -12,12 +13,15 @@ NOW = 1_800_000_000
 
 
 class FakeAPI:
-    def __init__(self, following=None, liked=None, unfollow_before_write=False):
+    def __init__(self, following=None, liked=None, unfollow_before_write=False, workouts=None, confirm_writes=True):
         self.calls = []
         self.following = following if following is not None else [{"username": "friend"}, {"username": "me"}]
         self.liked = liked or []
         self.unfollow_before_write = unfollow_before_write
         self.following_reads = 0
+        self.workouts = workouts
+        self.confirm_writes = confirm_writes
+        self.written = set()
 
     def request(self, method, path):
         self.calls.append((method, path))
@@ -29,13 +33,22 @@ class FakeAPI:
         if path.startswith("/user_workouts_paged?"):
             if "username=me&" in path:
                 raise AssertionError("Own workouts must never be selected")
+            if self.workouts is not None:
+                params = parse_qs(urlsplit(path).query)
+                start = int(params["offset"][0])
+                limit = int(params["limit"][0])
+                return {"workouts": self.workouts.get(params["username"][0], [])[start:start + limit]}
             return {"workouts": [
                 {"id": "new-1", "created_at": NOW - 60},
                 {"id": "old-1", "created_at": NOW - 8 * 86400},
             ]}
-        if path == "/workout_likes/new-1":
-            return self.liked
-        if method == "POST" and path == "/workout/like/new-1":
+        if path.startswith("/workout_likes/"):
+            wid = path.rsplit("/", 1)[1]
+            return ([{"username": "me"}] if wid in self.written else
+                    self.liked if wid == "new-1" else [])
+        if method == "POST" and path.startswith("/workout/like/"):
+            if self.confirm_writes:
+                self.written.add(path.rsplit("/", 1)[1])
             return None
         raise AssertionError((method, path))
 
@@ -85,6 +98,34 @@ class FriendsTests(unittest.TestCase):
 
     def test_cap_stops_writes(self):
         self.assertEqual(run(FakeAPI(), self.store, apply=True, cap=1, clock=lambda: NOW), (1, 1, 1, True))
+
+    def test_newest_workout_across_friends_wins_over_alphabetical_order(self):
+        api = FakeAPI(following=[{"username": "alice"}, {"username": "zoe"}], workouts={
+            "alice": [{"id": "alice-older", "created_at": NOW - 300}],
+            "zoe": [{"id": "zoe-newest", "created_at": NOW - 10}],
+        })
+        self.assertEqual(run(api, self.store, apply=True, cap=1, clock=lambda: NOW)[2], 1)
+        self.assertEqual([p for m, p in api.calls if m == "POST"], ["/workout/like/zoe-newest"])
+
+    def test_sort_is_global_and_handles_more_than_one_page(self):
+        posts = [{"id": f"w-{i}", "created_at": NOW - 100 + i} for i in range(6)]
+        api = FakeAPI(workouts={"friend": posts})
+        run(api, self.store, apply=True, cap=2, clock=lambda: NOW)
+        self.assertTrue(any("offset=5" in p for _, p in api.calls))
+        self.assertEqual([p for m, p in api.calls if m == "POST"], ["/workout/like/w-5", "/workout/like/w-4"])
+
+    def test_unconfirmed_write_is_not_counted_or_cached(self):
+        api = FakeAPI(confirm_writes=False)
+        with patch("friends_bot.time.sleep"):
+            with self.assertRaises(BotError):
+                run(api, self.store, apply=True, clock=lambda: NOW)
+        self.assertEqual(self.store.data["liked"], [])
+
+    def test_audit_reads_server_and_detects_missing_likes_without_writes(self):
+        self.store.data["liked"] = ["new-1", "missing-1"]
+        api = FakeAPI(liked=[{"username": "ME"}])
+        self.assertEqual(audit_likes(api, self.store), (2, 1))
+        self.assertFalse(any(method == "POST" for method, _ in api.calls))
 
     def test_state_is_encrypted_and_roundtrips(self):
         self.store.data["tokens"]["refresh_token"] = "rotated-fake-refresh-9999"

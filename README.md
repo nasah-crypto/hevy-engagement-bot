@@ -35,9 +35,9 @@ refaire une liaison avec une connexion Safari recente.
 
 ## Premier essai sans likes
 
-Une modification de `friends_bot.py` ou du workflow sur `main` lance aussi
-un essai de verification, sans likes. Cette fonction permet de verifier la
-connexion apres une correction sans manipulation supplementaire.
+Une modification de `friends_bot.py` ou du workflow sur `main` controle jusqu'a
+50 likes deja enregistres directement sur Hevy, sans envoyer de nouveaux likes.
+Le mode manuel `controler` effectue le meme audit.
 
 
 Actions > Likes des amis Hevy > Run workflow > mode `verifier` > Run workflow.
@@ -63,8 +63,11 @@ pendant cette pause.
 ## Perimetre et limites
 
 - Seances des 7 derniers jours des personnes actuellement suivies.
+- Collecte parmi tous les amis, puis traitement des publications les plus recentes
+  en premier, au lieu d'un traitement par ordre alphabetique des amis.
 - Verification de l'abonnement a la personne juste avant chaque like.
 - Exclusion de ses propres seances et des seances deja likees.
+- Chaque nouveau like est relu sur Hevy avant d'etre compte et enregistre.
 - Maximum de 100 likes par passage, 40 pages de 5 seances par ami.
 - Arret en cas de limite API, connexion refusee ou reponse non reconnue.
 - Aucun abonnement, desabonnement, commentaire ni message automatique.
