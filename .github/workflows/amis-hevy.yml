@@ -1,6 +1,11 @@
 name: Likes des amis Hevy
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/amis-hevy.yml
+      - friends_bot.py
   workflow_dispatch:
     inputs:
       mode:
@@ -23,7 +28,7 @@ concurrency:
 
 jobs:
   amis:
-    if: github.event_name == 'workflow_dispatch' || vars.HEVY_ENABLED == 'true'
+    if: github.event_name != 'schedule' || vars.HEVY_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
