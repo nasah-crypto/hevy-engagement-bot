@@ -23,6 +23,7 @@ from cryptography.fernet import Fernet, InvalidToken
 
 BASE = "https://api.hevyapp.com"
 STATE = Path(".hevy-state/session.enc")
+PAGE_SIZE = 5
 
 
 class BotError(Exception):
@@ -180,8 +181,8 @@ def run(api, store, apply=False, cap=50, days=7, clock=time.time):
     cutoff = clock() - days * 86400
     candidates = sent = 0
     for friend in sorted(friends):
-        for page in range(20):
-            params = urlencode({"username": friend, "limit": 10, "offset": page * 10})
+        for page in range(40):
+            params = urlencode({"username": friend, "limit": PAGE_SIZE, "offset": page * PAGE_SIZE})
             data = api.request("GET", "/user_workouts_paged?" + params)
             if not isinstance(data, dict) or not isinstance(data.get("workouts"), list):
                 raise BotError("Format des seances inconnu. Traitement arrete.")
@@ -214,7 +215,7 @@ def run(api, store, apply=False, cap=50, days=7, clock=time.time):
                     sent += 1
                 if (sent if apply else candidates) >= cap:
                     return len(friends), candidates, sent, True
-            if len(workouts) < 10 or (workouts and old == len(workouts)):
+            if len(workouts) < PAGE_SIZE or (workouts and old == len(workouts)):
                 break
     return len(friends), candidates, sent, False
 
