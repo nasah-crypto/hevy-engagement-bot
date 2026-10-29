@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   amis:
-    if: github.event_name != 'schedule' || vars.HEVY_ENABLED == 'true'
+    if: github.event_name != 'schedule' || vars.HEVY_ENABLED != 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

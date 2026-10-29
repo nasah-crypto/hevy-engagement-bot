@@ -6,9 +6,9 @@ pas les modules follow/unfollow du programme d'origine.
 
 ## Etat actuel
 
-La preparation du code ne connecte pas votre compte et n'active pas les likes.
-Le fonctionnement reel de l'API et du signet devra etre valide avec votre
-connexion. L'API sociale utilisee n'est pas officielle et peut changer.
+Le workflow programme un passage de likes chaque heure lorsque le secret
+HEVY_AUTH_JSON est renseigne. La premiere connexion doit etre validee en mode
+verifier. L'API sociale utilisee n'est pas officielle et peut changer.
 
 ## Connexion depuis Safari
 
@@ -50,20 +50,22 @@ valeur HEVY_EXPECTED_USERNAME dans le workflow.
 ## Liker et activer les passages automatiques
 
 Apres validation du premier essai, Run workflow avec le mode `liker` effectue
-un passage. Puis, pour l'automatisation : Settings > Secrets and variables >
-Actions > Variables > New repository variable : `HEVY_ENABLED` = `true`.
+un passage immediat. Les passages horaires sont actives par defaut dans cette
+version, avec un maximum de 100 likes par passage.
 
 L'execution programmee est prevue chaque heure a la minute 23 en UTC ; GitHub
-peut la retarder. Tant que la variable n'est pas `true`, aucun passage
-automatique ne demarre. Pour arreter : supprimer cette variable ou la mettre
-a `false`, ou desactiver le workflow.
+peut la retarder. Pour mettre en pause : Settings > Secrets and variables >
+Actions > Variables > New repository variable : `HEVY_ENABLED` = `false`.
+Pour reprendre : mettre cette variable a `true`, ou la supprimer. Le workflow
+peut aussi etre desactive depuis Actions. Un lancement manuel reste possible
+pendant cette pause.
 
 ## Perimetre et limites
 
 - Seances des 7 derniers jours des personnes actuellement suivies.
 - Verification de l'abonnement a la personne juste avant chaque like.
 - Exclusion de ses propres seances et des seances deja likees.
-- Maximum de 50 likes par passage, 40 pages de 5 seances par ami.
+- Maximum de 100 likes par passage, 40 pages de 5 seances par ami.
 - Arret en cas de limite API, connexion refusee ou reponse non reconnue.
 - Aucun abonnement, desabonnement, commentaire ni message automatique.
 

@@ -24,6 +24,7 @@ from cryptography.fernet import Fernet, InvalidToken
 BASE = "https://api.hevyapp.com"
 STATE = Path(".hevy-state/session.enc")
 PAGE_SIZE = 5
+MAX_LIKES = 100
 
 
 class BotError(Exception):
@@ -168,7 +169,7 @@ def workout_date(workout):
     raise BotError("Date de seance inconnue. Arret avant de liker cette seance.")
 
 
-def run(api, store, apply=False, cap=50, days=7, clock=time.time):
+def run(api, store, apply=False, cap=MAX_LIKES, days=7, clock=time.time):
     account = api.request("GET", "/user/account")
     if not isinstance(account, dict) or not isinstance(account.get("username"), str):
         raise BotError("Profil Hevy non reconnu. Aucun like envoye.")
@@ -236,7 +237,7 @@ def main():
                 f"Likes envoyes : {sent}. Mode : {'likes' if args.apply else 'verification'}. "
                 "Periode : 7 derniers jours.")
         if capped:
-            text += " Limite de 50 atteinte ; les autres seront examines au prochain passage."
+            text += f" Limite de {MAX_LIKES} atteinte ; les autres seront examines au prochain passage."
         print(text)
         if os.getenv("GITHUB_STEP_SUMMARY"):
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
