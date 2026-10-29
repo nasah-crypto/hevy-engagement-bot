@@ -51,4 +51,7 @@ logs/
 .coverage
 htmlcov/
 .pytest_cache/
-.tox/ 
+.tox/
+
+# Private Hevy session (encrypted cache only)
+.hevy-state/

@@ -1,141 +1,82 @@
-# Hevy Engagement Bot
+# Likes des amis Hevy — configuration sur iPhone
 
-A Python bot designed to enhance user engagement on the Hevy fitness tracking application, ultimately aiming to increase follower count for the bot's user. It intelligently interacts with active users and automates the management of your following list.
+Version personnelle basee sur le depot MIT de dizzyfrogs. Le nouveau programme
+`friends_bot.py` utilise les seances des personnes deja suivies. Il n'utilise
+pas les modules follow/unfollow du programme d'origine.
 
-## Table of Contents
+## Etat actuel
 
-- [Features](#features)
-- [How It Works](#how-it-works)
-- [Results](#proven-results)
-- [Setup](#setup)
-- [Usage](#usage)
-- [Requirements](#requirements)
+La preparation du code ne connecte pas votre compte et n'active pas les likes.
+Le fonctionnement reel de l'API et du signet devra etre valide avec votre
+connexion. L'API sociale utilisee n'est pas officielle et peut changer.
 
-## Features 
+## Connexion depuis Safari
 
-**Follow Management**
-- Automatically identifies and follows users who actively engage with workouts (commenting or liking)
-- Ensures that targeted users have recent activity on the platform before a follow request is sent, avoiding inactive accounts
-- Locally caches users previously followed by the bot to prevent redundant follow requests
+1. Connectez-vous a votre compte sur https://hevy.com dans Safari.
+2. Creez un signet nomme « Connexion Hevy » pour cette page.
+3. Modifiez l'adresse de ce signet pour y mettre toute la ligne du fichier
+   `setup/connexion-safari.js`, y compris le debut `javascript:`.
+4. Sur hevy.com, lancez ce signet. Il lit uniquement le cookie de connexion
+   `auth2.0-token` du site. Il n'envoie rien sur le reseau. Si le cookie est
+   inaccessible, il s'arrete : ne partagez pas d'autres cookies ni votre mot
+   de passe. La disponibilite sur votre version Safari reste a confirmer.
+5. Appuyez sur « Copier ma connexion ». Le texte copie contient une cle de
+   connexion privee : ne pas l'envoyer dans le chat, un fichier du depot,
+   une issue ou une capture d'ecran.
+6. Dans votre depot GitHub : Settings > Secrets and variables > Actions >
+   New repository secret. Nom : `HEVY_AUTH_JSON`. Collez le texte dans Secret.
+   Puis Add secret. Effacez ensuite le presse-papiers en copiant un texte banal.
 
-**Unfollow Management**
-- Automatically unfollows users who have been inactive for a configurable duration
-- Identifies and unfollows users who do not follow back within a configurable period
-- Allows for whitelisting of users who the bot should never unfollow
-- Only users originally followed by the bot are considered for unfollowing, so that manual connections are preserved
+La connexion Safari et celle du bot partagent initialement une session. Pour
+eviter des conflits de renouvellement, reservez cet onglet a la configuration ;
+ne vous deconnectez pas de cette session apres copie. L'application iPhone
+peut continuer a utiliser sa propre session. Si Hevy refuse la connexion,
+refaire une liaison avec une connexion Safari recente.
 
-**Post Liking**
-- Acts as a workaround for the daily follow limit, as there is no known limit for liking posts.
-- Discovers new workouts through the Hevy feed and automatically likes them to increase visibility.
+## Premier essai sans likes
 
-**Notifications**
-- Integrates with Discord webhooks to send notifications and summaries of bot activities (users followed, unfollowed, etc.)
+Actions > Likes des amis Hevy > Run workflow > mode `verifier` > Run workflow.
+Sur un fork, GitHub peut demander d'abord l'activation d'Actions. Le mode
+verifier lit les amis et les seances recentes, sans envoyer de likes. Les
+journaux affichent seulement des compteurs, aucun jeton ni detail des seances.
+Le profil attendu est `abakayhasan` ; si ce pseudo change, mettre a jour la
+valeur HEVY_EXPECTED_USERNAME dans le workflow.
 
-**Scheduling**
-- Can be configured to run all processes automatically at predefined intervals using a cron-based scheduler
+## Liker et activer les passages automatiques
 
-## How It Works
-The Hevy Engagement Bot operates by interacting with the Hevy API to simulate user activity. Here's a general overview of its process:
+Apres validation du premier essai, Run workflow avec le mode `liker` effectue
+un passage. Puis, pour l'automatisation : Settings > Secrets and variables >
+Actions > Variables > New repository variable : `HEVY_ENABLED` = `true`.
 
-  1. **Authentication**: The bot authenticates with the Hevy API using your provided auth token
-  2. **Configuration**: It loads settings from `config/config.yaml`, which sets daily limits, delays, and scheduling.
-  3. **Discovery Feed Analysis**:
-  - The bot fetches the "Discovery Feed," which contains recent workouts, comments, and likes from other Hevy users.
-  - It parses this data to identify potential users to follow or workouts to like based on their activity.
-  - Before following, it quickly checks the target's recent workout activity to make sure they're not inactive.
-  4. **Follow/Like Execution**: The bot sends follow/like requests through the API.
-  5. **Following Cache Update**: When a user is followed, their details and the timestamp of the follow are added to a local cache. This helps determine unfollow criteria and avoid duplicate follows.
-  6. **Unfollow Logic**:
-  - The bot reviews the users in its followed cache.
-  - It checks each cached user's last workout date to determine inactivity.
-  - It also checks if the user has followed back within the defined threshold.
-  - Users meeting the unfollow criteria (and are not on the whitelist) are unfollowed.
-  - A separate unfollowed cache tracks users that have been unfollowed to prevent refollowing them.
-  7. **Notifications**: Throughout the operation, the bot sends notifications to a Discord webhook.
+L'execution programmee est prevue chaque heure a la minute 23 en UTC ; GitHub
+peut la retarder. Tant que la variable n'est pas `true`, aucun passage
+automatique ne demarre. Pour arreter : supprimer cette variable ou la mettre
+a `false`, ou desactiver le workflow.
 
-## Proven Results
+## Perimetre et limites
 
-This bot has been rigorously tested on a dedicated Hevy account. Over a period of just one month, the account's follower count increased from **31 to over 1,000 followers**, demonstrating the effectiveness of taking advantage of engagement techniques.
-![image](https://github.com/user-attachments/assets/b72d5892-df20-4316-b7b9-13990d37d8b1) ➔ ![image](https://github.com/user-attachments/assets/d474a60c-b672-44cf-b57a-ac6b8404a67a)
+- Seances des 7 derniers jours des personnes actuellement suivies.
+- Verification de l'abonnement a la personne juste avant chaque like.
+- Exclusion de ses propres seances et des seances deja likees.
+- Maximum de 50 likes par passage, 20 pages de 10 seances par ami.
+- Arret en cas de limite API, connexion refusee ou reponse non reconnue.
+- Aucun abonnement, desabonnement, commentaire ni message automatique.
 
-## Setup
+Le jeton initial reste dans un secret GitHub. Les jetons renouveles sont
+conserves dans un cache chiffre avec Fernet ; la cle est derivee du secret
+initial et n'est jamais placee dans ce cache. Aucune session en clair n'est
+commitee ni televersee en artefact. Le cache peut etre evince par GitHub ;
+dans ce cas une nouvelle liaison peut etre necessaire. Les workflows
+programmes d'un depot public peuvent etre suspendus par GitHub apres une
+periode d'inactivite. Le quota gratuit et les restrictions GitHub s'appliquent.
 
-To get the Hevy Engagement Bot up and running, follow these steps:
-1. **Environment Variables (`.env` file)**:
-  Create a file names `.env` in the root directory.
-  ```
-  # API Credentials
-  AUTH_TOKEN=
-  # Discord Webhook (Optional)
-  DISCORD_WEBHOOK_URL=
-  ```
-2. **Configuration File (`config/config.yaml` - Optional)**:
-  Customize the bot's configuration by editing the `config/config.yaml` file.
-  ```yaml
-    # Scheduler Settings
-    scheduler:
-      follow_schedule: "0 12 * * *"    # Run at 12 PM daily
-      unfollow_schedule: "0 12 * * *"  # Run at 12 PM daily
-      like_schedule: "0 * * * *"       # Run every hour at minute 0
+## Verification du code
 
-    # API Settings
-    api:
-      base_url: "https://api.hevyapp.com"
-      rate_limit_delay: 300  # 5 minutes
-      request_delay:
-        min: 1.5
-        max: 3.0
+Python 3.12 et `cryptography==50.0.2` :
 
-    # Follow Settings
-    follow:
-      target_count: 30     # Daily follow limit
-      comment_priority: 2  # Higher priority for users who comment
-      like_priority: 1     # Lower priority for users who only like
-
-    # Unfollow Settings
-    unfollow:
-      inactive_threshold: 21    # days
-      follow_back_threshold: 7  # days
-      daily_unfollow_cap: 100
-
-    # Like Settings
-    like:
-      like_cap: 50         # Max number of workouts to like per run
-  ```
-3. **Whitelist (`data/whitelist.json` - Optional)**:
-  If there are specific users you wish to permanently exclude from the unfollow process, add their usernames to `data/whitelist.json`. Example:
-  
-```JSON
-[
-  "username1",
-  "username2",
-  "username3"
-]
+```sh
+python -m unittest discover -s tests -v
 ```
 
-## Usage
-
-Before running the bot, ensure all required Python dependencies are installed.
-
-1. **Install Dependencies**:
-  Navigate to the root directory in your terminall and run:
-  ```command
-  pip install -r requirements.txt
-  ```
-2. **Run the Bot**:
-  You can execure the bot in various modes using certain arguments:
-  ```command
-  python -m src.main --auto
-  python -m src.main --follow
-  python -m src.main --unfollow
-  python -m src.main --like
-  ```
-
-## Requirements
-
-- Python 3.8 or a more recent version
-- All packages listed in the `requirements.txt` file
-
-## License
-
-MIT License
+Les tests simulent Hevy. Ils ne valident pas le fonctionnement actuel de son
+API sur un compte reel.
