@@ -75,7 +75,7 @@ jobs:
         env:
           HEVY_AUTH_JSON: ${{ secrets.HEVY_AUTH_JSON }}
           HEVY_EXPECTED_USERNAME: abakayhasan
-          APPLY_SOCIAL: ${{ github.event_name == 'schedule' || inputs.mode == 'automatique' || github.event.head_commit.message == 'Validate priority followbacks on Hevy' }}
+          APPLY_SOCIAL: ${{ github.event_name == 'schedule' || inputs.mode == 'automatique' }}
           FOLLOW_ENABLED: ${{ vars.HEVY_FOLLOW_ENABLED != 'false' }}
           UNFOLLOW_ENABLED: ${{ vars.HEVY_UNFOLLOW_ENABLED != 'false' }}
         run: |

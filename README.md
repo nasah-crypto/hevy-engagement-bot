@@ -54,13 +54,16 @@ croissance constante des abonnes ne peuvent pas etre garantis.
 
 ## Validation du 29 octobre 2026
 
-40 tests automatises passes. Controle sur Hevy : 50 likes historiques confirmes
-sur 50, puis 2 nouveaux abonnements confirmes par relecture du statut serveur.
-Le workflow est actif et un premier passage horaire a ete observe. Le controle
-des nouvelles fonctions lit la liste complete des abonnes sans envoyer de
-suivis en retour ni de desabonnements lors du deploiement.
-Le profil est prive et 24 demandes recues restent en attente : elles n'ont pas
-ete acceptees par le programme.
+40 tests automatises passes localement et sur GitHub. Le premier passage
+horaire a confirme 100 nouveaux likes et 2 nouveaux abonnements.
+Le controle de la gestion sociale a releve les 168 abonnes de facon complete,
+puis confirme 2 suivis en retour prioritaires. Quatre retours restaient a
+traiter. Le premier releve a servi de reference : aucun desabonnement n'a ete
+effectue. Les suppressions futures attendent une perte constatee puis une
+nouvelle verification au moins 24 heures apres.
+Le profil est prive et 24 demandes recues restent en attente : leur acceptation
+n'est pas automatisee. Les deploiements habituels effectuent seulement des
+controles en lecture ; l'essai de suivis en retour a ete execute une fois.
 
 ## Etat actuel
 
