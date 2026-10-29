@@ -35,6 +35,11 @@ refaire une liaison avec une connexion Safari recente.
 
 ## Premier essai sans likes
 
+Une modification de `friends_bot.py` ou du workflow sur `main` lance aussi
+un essai de verification, sans likes. Cette fonction permet de verifier la
+connexion apres une correction sans manipulation supplementaire.
+
+
 Actions > Likes des amis Hevy > Run workflow > mode `verifier` > Run workflow.
 Sur un fork, GitHub peut demander d'abord l'activation d'Actions. Le mode
 verifier lit les amis et les seances recentes, sans envoyer de likes. Les
@@ -58,7 +63,7 @@ a `false`, ou desactiver le workflow.
 - Seances des 7 derniers jours des personnes actuellement suivies.
 - Verification de l'abonnement a la personne juste avant chaque like.
 - Exclusion de ses propres seances et des seances deja likees.
-- Maximum de 50 likes par passage, 20 pages de 10 seances par ami.
+- Maximum de 50 likes par passage, 40 pages de 5 seances par ami.
 - Arret en cas de limite API, connexion refusee ou reponse non reconnue.
 - Aucun abonnement, desabonnement, commentaire ni message automatique.
 
