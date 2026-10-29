@@ -1,8 +1,34 @@
 # Likes des amis Hevy — configuration sur iPhone
 
 Version personnelle basee sur le depot MIT de dizzyfrogs. Le nouveau programme
-`friends_bot.py` utilise les seances des personnes deja suivies. Il n'utilise
-pas les modules follow/unfollow du programme d'origine.
+`friends_bot.py` utilise les seances des personnes deja suivies. `social_bot.py`
+ajoute les abonnements limites depuis les recommandations de Hevy. Aucun des
+deux n'utilise les anciens modules follow/unfollow du programme d'origine.
+
+## Abonnements automatiques
+
+Le passage horaire lance aussi les nouveaux abonnements : maximum 2 par passage
+et 20 tentatives sur 24 heures glissantes, parmi les utilisateurs recommandes
+par Hevy. Ces plafonds sont choisis pour ce bot et ne representent pas une
+autorisation ou une limite officielle de Hevy. Les comptes deja suivis, les
+demandes en attente et les personnes deja tentees par le bot sont exclus.
+Chaque tentative est chiffree et enregistree AVANT l'envoi pour eviter de
+recommencer apres une coupure. Le statut following/requested est relu sur Hevy.
+Le bot ne se desabonne de personne, ne publie pas de commentaires et ne change
+pas la confidentialite du compte. Les abonnements recus ne sont pas garantis.
+
+Mode manuel `automatique` : likes et nouveaux abonnements.
+Mode `liker` : likes uniquement ; `verifier` et `controler` ne creent pas
+d'abonnements. Les modifications du code ne font que des controles en lecture.
+Variable `HEVY_FOLLOW_ENABLED=false` : suspend uniquement les nouveaux abonnements.
+Variable `HEVY_ENABLED=false` : suspend tous les passages horaires.
+
+L'acceptation automatique des demandes RECUES n'est pas activee : la route de
+lecture est connue, mais la mutation d'acceptation n'a pas ete confirmee.
+Le controle de deploiement lit uniquement leur nombre et la confidentialite
+si ces informations sont disponibles. Aucun nom de demandeur n'est journalise.
+Une API privee peut changer ou refuser une requete ; zero erreur et une
+croissance constante des abonnes ne peuvent pas etre garantis.
 
 ## Etat actuel
 

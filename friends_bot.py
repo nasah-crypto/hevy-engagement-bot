@@ -114,8 +114,8 @@ class Hevy:
         except (URLError, TimeoutError, OSError):
             raise BotError("Hevy injoignable. Reessayer plus tard.") from None
 
-    def request(self, method, path):
-        status, data = self.raw(method, path)
+    def request(self, method, path, payload=None):
+        status, data = self.raw(method, path, payload)
         if status == 401:
             status, refreshed = self.raw("POST", "/auth/refresh_token", {
                 "refresh_token": self.store.data["tokens"]["refresh_token"]
@@ -125,7 +125,7 @@ class Hevy:
             self.store.data["tokens"] = validate_tokens(refreshed)
             # Save rotated credentials before any subsequent API call.
             self.store.save()
-            status, data = self.raw(method, path)
+            status, data = self.raw(method, path, payload)
         if status == 429:
             raise BotError("Limite Hevy atteinte. Arret, sans nouvelles tentatives.")
         if status in (401, 403):

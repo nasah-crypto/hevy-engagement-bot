@@ -6,10 +6,11 @@ on:
     paths:
       - .github/workflows/amis-hevy.yml
       - friends_bot.py
+      - social_bot.py
   workflow_dispatch:
     inputs:
       mode:
-        description: "Verifier sans liker, ou liker les seances des amis"
+        description: "Verifier, liker, controler ou lancer likes et abonnements"
         type: choice
         required: true
         default: verifier
@@ -17,6 +18,7 @@ on:
           - verifier
           - liker
           - controler
+          - automatique
   schedule:
     - cron: '23 * * * *'
 
@@ -61,10 +63,29 @@ jobs:
           RUN_MODE: ${{ github.event_name == 'schedule' && 'liker' || inputs.mode || 'controler' }}
         run: |
           case "$RUN_MODE" in
-            liker) python friends_bot.py --apply ;;
+            liker|automatique) python friends_bot.py --apply ;;
             controler) python friends_bot.py --audit ;;
             *) python friends_bot.py ;;
           esac
+      - name: Gerer les nouveaux abonnements
+        if: ${{ !cancelled() && steps.session.outputs.id != '' }}
+        env:
+          HEVY_AUTH_JSON: ${{ secrets.HEVY_AUTH_JSON }}
+          HEVY_EXPECTED_USERNAME: abakayhasan
+          APPLY_FOLLOWS: ${{ (github.event_name == 'schedule' || inputs.mode == 'automatique') && vars.HEVY_FOLLOW_ENABLED != 'false' }}
+        run: |
+          if [ "$APPLY_FOLLOWS" = "true" ]; then
+            python social_bot.py --apply
+          else
+            python social_bot.py
+          fi
+      - name: Verifier la disponibilite des demandes recues
+        if: ${{ github.event_name == 'push' }}
+        continue-on-error: true
+        env:
+          HEVY_AUTH_JSON: ${{ secrets.HEVY_AUTH_JSON }}
+          HEVY_EXPECTED_USERNAME: abakayhasan
+        run: python social_bot.py --inspect-requests
       - name: Conserver uniquement la connexion chiffree
         if: always() && steps.session.outputs.id != '' && hashFiles('.hevy-state/session.enc') != ''
         uses: actions/cache/save@v4
