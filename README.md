@@ -1,3 +1,17 @@
+## Nettoyage accelere — 3 novembre 2026
+
+Maximum 10 desabonnements par passage et 50 tentatives sur 24 heures glissantes,
+partages entre toutes les regles de nettoyage. Les plafonds sont choisis pour
+ce bot ; ils ne sont pas des limites officielles Hevy.
+Les anciens comptes non reciproques du premier releve ont deja ete traites.
+Les comptes suivis par le bot deviennent aussi eligibles apres 72 heures sans
+suivi en retour, uniquement si le statut est following. Les demandes sortantes
+en attente et les abonnes reciproques sont conserves. Une perte d'abonne deja
+observee garde son delai de verification de 24 heures. Chaque retrait est
+recontrole sur une liste complete et confirme apres envoi. Aucun contournement
+des refus ou limites Hevy n'est effectue. Les plafonds d'abonnements ne changent
+pas. 55 tests passent localement.
+
 # Likes des amis Hevy — configuration sur iPhone
 
 Version personnelle basee sur le depot MIT de dizzyfrogs. Le nouveau programme
@@ -31,7 +45,7 @@ n'est ajoute automatiquement a cette liste apres sa creation.
 Cette liste peut etre traitee des maintenant, sans attendre 24 heures. Chaque
 personne est recontrolee juste avant son retrait : si elle nous suit desormais,
 elle est conservee et quitte la liste. Le plafond commun a tous les retraits
-reste de 2 par passage et 10 tentatives sur 24 heures. Variable
+reste de 10 par passage et 50 tentatives sur 24 heures. Variable
 `HEVY_CLEANUP_EXISTING=false` : suspend uniquement ce nettoyage.
 
 Le premier essai sur le compte a confirme 2 retraits d'anciens abonnements non
@@ -47,7 +61,7 @@ et le statut following est recontrole. Une personne revenue entre-temps est
 conservee. Les contacts deja non reciproques lors du premier releve, ainsi que
 les nouvelles demandes sortantes, ne sont pas supprimes par cette regle.
 
-Maximum : 2 desabonnements par passage et 10 tentatives sur 24 heures. Aucun
+Maximum : 10 desabonnements par passage et 50 tentatives sur 24 heures. Aucun
 desabonnement n'est compte sans relecture du statut. Une tentative incertaine
 n'est pas repetee. Les comptes retires ne sont pas reabonnes automatiquement.
 Une liste incomplete, des pages dupliquees, un nombre d'abonnes qui ne

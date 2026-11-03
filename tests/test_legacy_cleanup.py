@@ -59,7 +59,7 @@ class LegacyCleanupTests(unittest.TestCase):
 
     def test_old_cleanup_and_future_losses_share_the_daily_unfollow_cap(self):
         api = BalanceAPI(fans={"fan"}, state={"old1": "following", "old2": "following"})
-        self.store.data["unfollow_attempts"] = {f"prior{i}": NOW - 100 for i in range(9)}
+        self.store.data["unfollow_attempts"] = {f"prior{i}": NOW - 100 for i in range(49)}
         run_social(api, self.store, apply=True, follow=False, cleanup_existing=True, clock=lambda: NOW)
         run_social(api, self.store, apply=True, follow=False, cleanup_existing=True, clock=lambda: NOW + 100)
         self.assertEqual(api.unfollows, ["old1"])

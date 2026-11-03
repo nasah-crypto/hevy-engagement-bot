@@ -10,9 +10,10 @@ from friends_bot import BotError, Hevy, StateStore, own_username, usernames
 
 PER_RUN = 2
 PER_24_HOURS = 20
-UNFOLLOW_PER_RUN = 2
-UNFOLLOW_PER_24_HOURS = 10
+UNFOLLOW_PER_RUN = 10
+UNFOLLOW_PER_24_HOURS = 50
 ABSENCE_SECONDS = 24 * 3600
+FOLLOWBACK_WAIT_SECONDS = 3 * 86400
 USERNAME = re.compile(r"[A-Za-z0-9_.-]{1,100}")
 
 
@@ -116,7 +117,18 @@ def prepare_existing_cleanup(api, store, own, current_followers, current_statuse
     return queue
 
 
-def unfollow_lost(api, store, own, apply=False, clock=time.time, cleanup_existing=False):
+def matured_nonmutuals(store, current_followers, current_statuses, clock=time.time):
+    history = attempts(store, "follow_attempts")
+    removed = attempts(store, "unfollow_attempts")
+    pending = attempts(store, "lost_followers_since")
+    return [name for name, stamp in sorted(history.items(), key=lambda item: (item[1], item[0]))
+            if clock() - stamp >= FOLLOWBACK_WAIT_SECONDS and name not in current_followers
+            and current_statuses.get(name) == "following" and name not in removed
+            and name not in pending]
+
+
+def unfollow_lost(api, store, own, apply=False, clock=time.time, cleanup_existing=False,
+                  mature_nonmutual=()):
     pending = attempts(store, "lost_followers_since")
     ledger = attempts(store, "unfollow_attempts")
     room = max(0, min(UNFOLLOW_PER_RUN, UNFOLLOW_PER_24_HOURS - sum(
@@ -124,11 +136,14 @@ def unfollow_lost(api, store, own, apply=False, clock=time.time, cleanup_existin
     legacy = valid_names(store.data.get("existing_nonmutual_queue", [])) if cleanup_existing else set()
     old_lost = [name for name, stamp in sorted(pending.items(), key=lambda item: (item[1], item[0]))
                 if clock() - stamp >= ABSENCE_SECONDS and name not in ledger and name != own]
-    eligible = list(dict.fromkeys(sorted(name for name in legacy if name not in ledger and name != own) + old_lost))
-    confirmed = cleaned = 0
+    mature = valid_names(mature_nonmutual) - set(ledger) - {own}
+    eligible = list(dict.fromkeys(sorted(name for name in legacy if name not in ledger and name != own)
+                                 + old_lost + [name for name in mature_nonmutual if name in mature]))
+    confirmed = cleaned = matured_removed = 0
 
     def remove_from_queue(name):
         pending.pop(name, None)
+        mature.discard(name)
         if name in legacy:
             legacy.remove(name)
             store.data["existing_nonmutual_queue"] = sorted(legacy)
@@ -153,11 +168,14 @@ def unfollow_lost(api, store, own, apply=False, clock=time.time, cleanup_existin
             if status != "not-following":
                 raise BotError("Desabonnement non confirme. Traitement arrete sans nouvelle tentative.")
             cleaned += name in legacy
+            matured_removed += name in mature
             remove_from_queue(name)
             confirmed += 1
     return {"anciens_abonnes_absents_24h": len(old_lost),
             "anciens_non_reciproques_restants": len(legacy - set(ledger)),
             "anciens_non_reciproques_retires": cleaned,
+            "non_reciproques_apres_72h_restants": len(mature - set(ledger)),
+            "non_reciproques_apres_72h_retires": matured_removed,
             "desabonnements_confirmes": confirmed}
 
 
@@ -227,7 +245,8 @@ def run_social(api, store, apply=False, unfollow=True, follow=True, clock=time.t
         prepare_existing_cleanup(api, store, own, current, current_statuses)
     result = follow_recommendations(api, store, apply=apply and follow, clock=clock, priority=current)
     result.update(unfollow_lost(api, store, own, apply=apply and unfollow, clock=clock,
-                               cleanup_existing=cleanup_existing))
+                               cleanup_existing=cleanup_existing,
+                               mature_nonmutual=matured_nonmutuals(store, current, current_statuses, clock)))
     result["abonnes_confirmes"] = len(current)
     result["premier_releve"] = first
     return result
@@ -272,7 +291,7 @@ def main():
             return 0
         result = run_social(api, store, apply=args.apply, unfollow=not args.no_unfollow,
                             follow=not args.no_follow, cleanup_existing=args.cleanup_existing)
-        text = "Gestion sociale : " + str(result) + ". Abonnements : 2 par passage, 20 par 24 h ; desabonnements : 2 par passage, 10 par 24 h. Anciens non reciproques : nettoyage si active ; pertes futures : verification apres 24 h."
+        text = "Gestion sociale : " + str(result) + f". Abonnements : 2 par passage, 20 par 24 h ; desabonnements : {UNFOLLOW_PER_RUN} par passage, {UNFOLLOW_PER_24_HOURS} par 24 h. Suivis du bot non reciproques : attente de 72 h ; pertes futures : verification apres 24 h."
         print(text)
         if os.getenv("GITHUB_STEP_SUMMARY"):
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:

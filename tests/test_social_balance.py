@@ -138,14 +138,15 @@ class BalanceTests(unittest.TestCase):
 
     def test_unfollow_daily_and_per_run_caps(self):
         api = BalanceAPI()
-        for name in ("lost1", "lost2", "lost3"):
+        names = [f"lost{i}" for i in range(11)]
+        for name in names:
             api.state[name] = "following"
-        self.store.data["lost_followers_since"] = {name: NOW - ABSENCE_SECONDS for name in ("lost1", "lost2", "lost3")}
+        self.store.data["lost_followers_since"] = {name: NOW - ABSENCE_SECONDS for name in names}
         unfollow_lost(api, self.store, "me", apply=True, clock=lambda: NOW)
-        self.assertEqual(len(api.unfollows), 2)
-        self.store.data["unfollow_attempts"].update({f"prior{i}": NOW - 10 for i in range(8)})
+        self.assertEqual(len(api.unfollows), 10)
+        self.store.data["unfollow_attempts"].update({f"prior{i}": NOW - 10 for i in range(40)})
         unfollow_lost(api, self.store, "me", apply=True, clock=lambda: NOW + 100)
-        self.assertEqual(len(api.unfollows), 2)
+        self.assertEqual(len(api.unfollows), 10)
 
     def test_bot_never_refollows_an_account_it_removed(self):
         self.store.data["unfollow_attempts"] = {"new1": NOW - 100}
