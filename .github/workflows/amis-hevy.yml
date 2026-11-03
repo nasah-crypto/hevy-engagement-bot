@@ -7,6 +7,7 @@ on:
       - .github/workflows/amis-hevy.yml
       - friends_bot.py
       - social_bot.py
+      - audit_unfollows.py
       - tests/**
   workflow_dispatch:
     inputs:
@@ -59,6 +60,12 @@ jobs:
           path: .hevy-state/session.enc
           key: hevy-session-v1-${{ steps.session.outputs.id }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: hevy-session-v1-${{ steps.session.outputs.id }}-
+      - name: Verifier les derniers desabonnements sur Hevy
+        if: github.event_name == 'push'
+        env:
+          HEVY_AUTH_JSON: ${{ secrets.HEVY_AUTH_JSON }}
+          HEVY_EXPECTED_USERNAME: abakayhasan
+        run: timeout --signal=INT --kill-after=15s 8m python audit_unfollows.py
       - name: Examiner les seances des amis
         env:
           HEVY_AUTH_JSON: ${{ secrets.HEVY_AUTH_JSON }}
