@@ -12,10 +12,10 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "Verifier, liker, controler ou lancer likes et abonnements"
+        description: "Mode de ce lancement manuel"
         type: choice
         required: true
-        default: verifier
+        default: automatique
         options:
           - verifier
           - liker
