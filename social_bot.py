@@ -8,8 +8,8 @@ from urllib.parse import quote
 
 from friends_bot import BotError, Hevy, StateStore, own_username, usernames
 
-PER_RUN = 2
-PER_24_HOURS = 20
+PER_RUN = 4
+PER_24_HOURS = 40
 UNFOLLOW_PER_RUN = 10
 UNFOLLOW_PER_24_HOURS = 50
 ABSENCE_SECONDS = 24 * 3600
@@ -189,7 +189,23 @@ def statuses(api):
     return {k.casefold(): v for k, v in data.items()}
 
 
-def follow_recommendations(api, store, apply=False, cap=PER_RUN, clock=time.time, priority=()):
+def network_candidates(api, store, own, current):
+    sources = sorted(valid_names([name for name, status in current.items()
+                                 if status == "following" and name != own]))
+    if not sources:
+        return []
+    cursor = store.data.get("discovery_source_cursor", 0)
+    if type(cursor) is not int or cursor < 0:
+        raise BotError("Position de decouverte invalide. Aucun abonnement envoye.")
+    source = sources[cursor % len(sources)]
+    store.data["discovery_source_cursor"] = cursor + 1
+    store.save()
+    rows = api.request("GET", "/following/" + quote(source, safe=""))
+    return sorted(valid_names(usernames(rows)))[:200]
+
+
+def follow_recommendations(api, store, apply=False, cap=PER_RUN, clock=time.time, priority=(),
+                           expand_discovery=False):
     own = own_username(api)
     current = statuses(api)
     recommendations = api.request("GET", "/recommended_users")
@@ -210,6 +226,11 @@ def follow_recommendations(api, store, apply=False, cap=PER_RUN, clock=time.time
     eligible = list(dict.fromkeys(name for name in ordered
         if name != own and current.get(name, "not-following") == "not-following"
         and name not in ledger and name not in removed))
+    if expand_discovery and room > len(eligible):
+        ordered += network_candidates(api, store, own, current)
+        eligible = list(dict.fromkeys(name for name in ordered
+            if name != own and current.get(name, "not-following") == "not-following"
+            and name not in ledger and name not in removed))
     confirmed = requested = returned = 0
     if apply and room and len(ledger) >= 10000:
         raise BotError("Historique des abonnements plein. Controle necessaire.")
@@ -236,14 +257,15 @@ def follow_recommendations(api, store, apply=False, cap=PER_RUN, clock=time.time
 
 
 def run_social(api, store, apply=False, unfollow=True, follow=True, clock=time.time,
-               cleanup_existing=False):
+               cleanup_existing=False, expand_discovery=False):
     own = own_username(api)
     current = followers(api, own)
     current_statuses = statuses(api)
     first = observe_followers(store, current, current_statuses, clock)
     if cleanup_existing:
         prepare_existing_cleanup(api, store, own, current, current_statuses)
-    result = follow_recommendations(api, store, apply=apply and follow, clock=clock, priority=current)
+    result = follow_recommendations(api, store, apply=apply and follow, clock=clock, priority=current,
+                                    expand_discovery=expand_discovery and follow)
     result.update(unfollow_lost(api, store, own, apply=apply and unfollow, clock=clock,
                                cleanup_existing=cleanup_existing,
                                mature_nonmutual=matured_nonmutuals(store, current, current_statuses, clock)))
@@ -290,8 +312,9 @@ def main():
             print("Demandes recues (lecture seule) : " + str(inspect_requests(api)))
             return 0
         result = run_social(api, store, apply=args.apply, unfollow=not args.no_unfollow,
-                            follow=not args.no_follow, cleanup_existing=args.cleanup_existing)
-        text = "Gestion sociale : " + str(result) + f". Abonnements : 2 par passage, 20 par 24 h ; desabonnements : {UNFOLLOW_PER_RUN} par passage, {UNFOLLOW_PER_24_HOURS} par 24 h. Suivis du bot non reciproques : attente de 72 h ; pertes futures : verification apres 24 h."
+                            follow=not args.no_follow, cleanup_existing=args.cleanup_existing,
+                            expand_discovery=True)
+        text = "Gestion sociale : " + str(result) + f". Abonnements : {PER_RUN} par passage, {PER_24_HOURS} par 24 h ; desabonnements : {UNFOLLOW_PER_RUN} par passage, {UNFOLLOW_PER_24_HOURS} par 24 h. Suivis du bot non reciproques : attente de 72 h ; pertes futures : verification apres 24 h."
         print(text)
         if os.getenv("GITHUB_STEP_SUMMARY"):
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:

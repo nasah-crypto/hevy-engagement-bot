@@ -57,14 +57,14 @@ class BalanceTests(unittest.TestCase):
         self.assertEqual(self.store.data["lost_followers_since"], {})
 
     def test_followbacks_precede_recommendations_and_share_the_same_cap(self):
-        api = BalanceAPI(fans={"zoe", "zara", "zack"})
+        api = BalanceAPI(fans={"zoe", "zara", "zack", "zane", "zelda"})
         result = run_social(api, self.store, apply=True, clock=lambda: NOW)
-        self.assertEqual(api.posts, ["zack", "zara"])
-        self.assertEqual(result["dont_suivis_en_retour"], 2)
+        self.assertEqual(api.posts, ["zack", "zane", "zara", "zelda"])
+        self.assertEqual(result["dont_suivis_en_retour"], 4)
         self.assertEqual(result["retours_en_attente"], 1)
 
     def test_shared_daily_cap_applies_to_followbacks_too(self):
-        self.store.data["follow_attempts"] = {f"prior{i}": NOW - 10 for i in range(19)}
+        self.store.data["follow_attempts"] = {f"prior{i}": NOW - 10 for i in range(39)}
         api = BalanceAPI(fans={"zoe", "zara"})
         run_social(api, self.store, apply=True, clock=lambda: NOW)
         self.assertEqual(api.posts, ["zara"])

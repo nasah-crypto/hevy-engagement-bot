@@ -45,14 +45,14 @@ class SocialTests(unittest.TestCase):
 
     def test_social_only_new_accounts_two_per_run_no_duplicates(self):
         api = SocialAPI()
-        result = follow_recommendations(api, self.store, apply=True, clock=lambda: NOW)
+        result = follow_recommendations(api, self.store, apply=True, cap=2, clock=lambda: NOW)
         self.assertEqual(result["abonnements_confirmes"], 2)
         self.assertEqual(api.posts, ["new1", "new2"])
         follow_recommendations(api, self.store, apply=True, clock=lambda: NOW)
         self.assertEqual(api.posts, ["new1", "new2", "new3"])
 
     def test_rolling_daily_cap_survives_reruns_and_midnight(self):
-        self.store.data["follow_attempts"] = {f"prior{i}": NOW - 100 for i in range(19)}
+        self.store.data["follow_attempts"] = {f"prior{i}": NOW - 100 for i in range(39)}
         api = SocialAPI()
         follow_recommendations(api, self.store, apply=True, clock=lambda: NOW)
         follow_recommendations(api, self.store, apply=True, clock=lambda: NOW + 3600)

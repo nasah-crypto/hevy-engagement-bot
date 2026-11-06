@@ -1,3 +1,15 @@
+## Croissance — 6 novembre 2026
+
+4 nouveaux abonnements par passage, 40 tentatives sur 24 heures glissantes.
+Les suivis en retour restent prioritaires et partagent ce plafond. Lorsque les
+recommandations Hevy ne suffisent plus, le bot consulte les abonnements d'un
+compte deja suivi, en changeant de source a chaque passage. Maximum une source
+supplementaire et 200 candidats examines ; exclusion des comptes deja suivis,
+des demandes en attente, des tentatives precedentes et des comptes retires.
+Les refus et limites Hevy arretent le passage. Les retraits restent plafonnes
+a 10 par passage et 50 par 24 heures, avec 72 heures d'attente pour les
+nouveaux suivis sans reciprocite. La hausse des abonnes recus n'est pas garantie.
+
 ## Nettoyage accelere — 3 novembre 2026
 
 Maximum 10 desabonnements par passage et 50 tentatives sur 24 heures glissantes,
@@ -22,8 +34,8 @@ deux n'utilise les anciens modules follow/unfollow du programme d'origine.
 
 ## Abonnements automatiques
 
-Le passage horaire lance aussi les nouveaux abonnements : maximum 2 par passage
-et 20 tentatives sur 24 heures glissantes. Les personnes qui nous suivent deja
+Le passage horaire lance aussi les nouveaux abonnements : maximum 4 par passage
+et 40 tentatives sur 24 heures glissantes. Les personnes qui nous suivent deja
 passent AVANT les recommandations de Hevy. Le plafond est commun aux deux.
 Ces plafonds sont choisis pour ce bot et ne representent pas une
 autorisation ou une limite officielle de Hevy. Les comptes deja suivis, les
